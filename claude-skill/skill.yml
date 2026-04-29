@@ -1,0 +1,8 @@
+name: organize-folder
+description: 一键整理电脑文件夹 - 自动分类和重命名文件
+command: python3 claude-skill/organize_skill.py
+arguments:
+  - name: path
+    description: 要整理的文件夹路径
+    required: false
+    default: "."
