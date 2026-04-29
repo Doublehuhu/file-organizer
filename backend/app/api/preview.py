@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
-from app.services.preview_service import get_preview_content, get_thumbnail, get_metadata
+from app.services.preview_service import get_preview_content, get_thumbnail, get_metadata, get_preview_image, open_native
 from app.utils.security import PathSecurityError, resolve_safe_path, validate_path_exists
 from app.config import settings
 
@@ -70,33 +70,26 @@ async def api_metadata(path: str = Query(..., description="文件路径")):
         raise HTTPException(status_code=status, detail={"code": e.code, "message": e.message})
 
 
-@router.get("/stream-video")
-async def api_stream_video(path: str = Query(..., description="视频文件路径")):
-    """视频流媒体（支持Range请求）"""
+@router.get("/preview-image")
+async def api_preview_image(
+    path: str = Query(..., description="文件路径"),
+    size: int = Query(1024),
+):
+    """获取全尺寸预览图（用于ql_preview类型）"""
     try:
-        file_path = resolve_safe_path(path)
-        validate_path_exists(file_path)
-        file_size = file_path.stat().st_size
+        data = get_preview_image(path, size)
+        if data:
+            return Response(content=data, media_type="image/webp")
+        raise HTTPException(status_code=404, detail="无法生成预览图")
+    except PathSecurityError as e:
+        raise HTTPException(status_code=400, detail={"code": e.code, "message": e.message})
 
-        from fastapi import Request
-        # 简化版：直接流式返回
-        def iterfile():
-            with open(file_path, "rb") as f:
-                chunk_size = 1024 * 1024
-                while True:
-                    chunk = f.read(chunk_size)
-                    if not chunk:
-                        break
-                    yield chunk
 
-        from app.utils.file_types import get_mime_type
-        return StreamingResponse(
-            iterfile(),
-            media_type=get_mime_type(path),
-            headers={
-                "Content-Length": str(file_size),
-                "Accept-Ranges": "bytes",
-            },
-        )
+@router.post("/open-native")
+async def api_open_native(path: str = Query(..., description="文件路径")):
+    """用macOS默认应用打开文件"""
+    try:
+        ok = open_native(path)
+        return {"success": ok}
     except PathSecurityError as e:
         raise HTTPException(status_code=400, detail={"code": e.code, "message": e.message})

@@ -1,7 +1,7 @@
 import { Button, Typography, Spin, Image } from 'antd'
-import { CloseOutlined, FileOutlined } from '@ant-design/icons'
+import { CloseOutlined, FileOutlined, ExportOutlined } from '@ant-design/icons'
 import { usePreviewContent } from '../../hooks/useFileList'
-import { formatFileSize } from '../../utils/format'
+import api from '../../api/client'
 
 const { Text, Title, Paragraph } = Typography
 
@@ -13,7 +13,14 @@ interface Props {
 export default function PreviewPanel({ path, onClose }: Props) {
   const { data, isLoading, error } = usePreviewContent(path)
   const fileName = path.split('/').pop() || ''
-  const ext = fileName.split('.').pop()?.toLowerCase() || ''
+
+  const handleOpenNative = async () => {
+    try {
+      await api.post(`/api/preview/open-native?path=${encodeURIComponent(path)}`)
+    } catch (e) {
+      console.error(e)
+    }
+  }
 
   const renderPreview = () => {
     if (isLoading) return <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
@@ -29,9 +36,10 @@ export default function PreviewPanel({ path, onClose }: Props) {
         return <video controls style={{ maxWidth: '100%' }} src={`/api/preview/stream-video?path=${encodeURIComponent(path)}`} />
       case 'audio':
         return <audio controls style={{ width: '100%' }} src={`/api/preview/stream?path=${encodeURIComponent(path)}`} />
+      case 'ql_preview':
       case 'pdf':
       case 'document':
-        return <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, maxHeight: '60vh', overflow: 'auto' }}>{data.content}</div>
+        return <Image src={`/api/preview/preview-image?path=${encodeURIComponent(path)}&size=2048`} alt={fileName} style={{ maxWidth: '100%' }} />
       default:
         return <div style={{ textAlign: 'center', padding: 40 }}>
           <FileOutlined style={{ fontSize: 64, color: '#d9d9d9' }} />
@@ -44,7 +52,10 @@ export default function PreviewPanel({ path, onClose }: Props) {
     <div className="preview-panel">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <Title level={5} style={{ margin: 0 }} ellipsis={{ tooltip: fileName }}>{fileName}</Title>
-        <Button type="text" icon={<CloseOutlined />} onClick={onClose} />
+        <div style={{ display: 'flex', gap: 4 }}>
+          <Button type="text" icon={<ExportOutlined />} onClick={handleOpenNative} title="用默认应用打开" />
+          <Button type="text" icon={<CloseOutlined />} onClick={onClose} />
+        </div>
       </div>
       {renderPreview()}
     </div>
