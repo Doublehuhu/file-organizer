@@ -1,17 +1,29 @@
 """DeepSeek V4 API客户端 (OpenAI兼容接口)"""
 
 import json
+import os
 from openai import OpenAI
 from app.config import settings
 
 
+def _get_api_key() -> str:
+    from app.models.database import get_db
+    try:
+        conn = get_db()
+        row = conn.execute("SELECT value FROM settings WHERE key='deepseek_api_key'").fetchone()
+        conn.close()
+        if row and row["value"]:
+            return row["value"]
+    except Exception:
+        pass
+    return os.environ.get("DEEPSEEK_API_KEY", "")
+
+
 def get_client() -> OpenAI | None:
-    if not settings.DEEPSEEK_API_KEY:
+    key = _get_api_key()
+    if not key:
         return None
-    return OpenAI(
-        api_key=settings.DEEPSEEK_API_KEY,
-        base_url=settings.DEEPSEEK_BASE_URL + "/v1",
-    )
+    return OpenAI(api_key=key, base_url=settings.DEEPSEEK_BASE_URL + "/v1")
 
 
 def suggest_rename_names(

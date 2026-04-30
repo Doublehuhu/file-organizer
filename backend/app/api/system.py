@@ -2,6 +2,7 @@
 
 import time
 from fastapi import APIRouter
+from pydantic import BaseModel
 from app.config import settings
 from app.models.database import get_db
 
@@ -48,6 +49,23 @@ async def api_get_settings():
 @router.get("/drives")
 async def api_drives():
     return {"drives": [{"mount_point": "/", "name": "Macintosh HD"}]}
+
+
+class SettingsUpdate(BaseModel):
+    key: str
+    value: str
+
+
+@router.put("/settings")
+async def api_update_settings(req: SettingsUpdate):
+    conn = get_db()
+    conn.execute(
+        "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?,?,datetime('now','localtime'))",
+        (req.key, req.value),
+    )
+    conn.commit()
+    conn.close()
+    return {"success": True}
 
 
 def _table_exists(conn, table_name: str) -> bool:
