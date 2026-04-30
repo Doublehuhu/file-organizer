@@ -1,38 +1,43 @@
 import { create } from 'zustand'
-import type { ViewMode, SortField, SortOrder } from '../types/file'
+import type { ViewMode, SortField, SortOrder, FileInfo } from '../types/file'
 
 interface BrowserState {
   currentPath: string
   selectedPaths: string[]
+  activeFile: FileInfo | null
   viewMode: ViewMode
   sortField: SortField
   sortOrder: SortOrder
-  expandedFolders: string[]
   showPreview: boolean
   previewPath: string
+  showSecondPanel: boolean
+  secondPanelPath: string
   setCurrentPath: (path: string) => void
   setSelectedPaths: (paths: string[]) => void
   toggleSelectPath: (path: string) => void
+  setActiveFile: (file: FileInfo | null) => void
   setViewMode: (mode: ViewMode) => void
   setSortField: (field: SortField) => void
   setSortOrder: (order: SortOrder) => void
   toggleSortOrder: () => void
   setShowPreview: (show: boolean, path?: string) => void
-  addExpandedFolder: (path: string) => void
-  removeExpandedFolder: (path: string) => void
+  toggleSecondPanel: () => void
+  setSecondPanelPath: (path: string) => void
   clearSelection: () => void
 }
 
 export const useBrowserStore = create<BrowserState>((set) => ({
   currentPath: '',
   selectedPaths: [],
+  activeFile: null,
   viewMode: 'table',
   sortField: 'name',
   sortOrder: 'asc',
-  expandedFolders: [],
   showPreview: false,
   previewPath: '',
-  setCurrentPath: (path) => set({ currentPath: path, selectedPaths: [] }),
+  showSecondPanel: false,
+  secondPanelPath: '',
+  setCurrentPath: (path) => set({ currentPath: path, selectedPaths: [], activeFile: null }),
   setSelectedPaths: (paths) => set({ selectedPaths: paths }),
   toggleSelectPath: (path) =>
     set((s) => ({
@@ -40,12 +45,13 @@ export const useBrowserStore = create<BrowserState>((set) => ({
         ? s.selectedPaths.filter((p) => p !== path)
         : [...s.selectedPaths, path],
     })),
+  setActiveFile: (file) => set({ activeFile: file, selectedPaths: [] }),
   setViewMode: (mode) => set({ viewMode: mode }),
   setSortField: (field) => set({ sortField: field }),
   setSortOrder: (order) => set({ sortOrder: order }),
   toggleSortOrder: () => set((s) => ({ sortOrder: s.sortOrder === 'asc' ? 'desc' : 'asc' })),
   setShowPreview: (show, path) => set({ showPreview: show, previewPath: path || '' }),
-  addExpandedFolder: (path) => set((s) => ({ expandedFolders: [...s.expandedFolders, path] })),
-  removeExpandedFolder: (path) => set((s) => ({ expandedFolders: s.expandedFolders.filter((p) => p !== path) })),
-  clearSelection: () => set({ selectedPaths: [] }),
+  toggleSecondPanel: () => set((s) => ({ showSecondPanel: !s.showSecondPanel, secondPanelPath: s.secondPanelPath || s.currentPath })),
+  setSecondPanelPath: (path) => set({ secondPanelPath: path }),
+  clearSelection: () => set({ selectedPaths: [], activeFile: null }),
 }))
