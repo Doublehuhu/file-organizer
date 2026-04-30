@@ -33,7 +33,7 @@ export default function Sidebar() {
   const addFav = async () => {
     if (!currentPath) return
     try {
-      await api.post('/api/files/favorites', null, { params: { path: currentPath } })
+      await api.post('/api/files/favorites', { path: currentPath })
       message.success('已收藏')
       loadFavs()
     } catch (e: any) { message.error(`失败: ${e.message}`) }

@@ -1,6 +1,7 @@
 """文件操作API"""
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
 from app.models.schemas import (
     FileListResponse, FileInfoResponse, BatchOperationRequest,
     RenameRequest, CreateFolderRequest, DeleteRequest, UndoRequest,
@@ -11,7 +12,7 @@ from app.services.file_service import (
     rename_file, delete_files, create_folder, undo_operation,
 )
 from pathlib import Path as FSPath
-from app.utils.security import PathSecurityError
+from app.utils.security import PathSecurityError, resolve_safe_path
 from app.models.database import get_db
 
 router = APIRouter()
@@ -105,12 +106,17 @@ async def api_favorites():
     conn.close()
     return {"favorites": [dict(r) for r in rows]}
 
+class FavRequest(BaseModel):
+    path: str
+    label: str = ""
+
 @router.post("/favorites")
-async def api_add_favorite(path: str = Query(...), label: str = Query("")):
+async def api_add_favorite(req: FavRequest):
+    from pathlib import Path
     try:
-        resolve_safe_path(path)
+        resolve_safe_path(req.path)
         conn = get_db()
-        conn.execute("INSERT OR IGNORE INTO favorites (path, label) VALUES (?,?)", (path, label or FSPath(path).name))
+        conn.execute("INSERT OR IGNORE INTO favorites (path, label) VALUES (?,?)", (req.path, req.label or Path(req.path).name))
         conn.commit(); conn.close()
         return {"success": True}
     except PathSecurityError as e:
