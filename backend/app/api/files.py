@@ -10,7 +10,9 @@ from app.services.file_service import (
     list_files, get_file_info, move_files, copy_files,
     rename_file, delete_files, create_folder, undo_operation,
 )
+from pathlib import Path as FSPath
 from app.utils.security import PathSecurityError
+from app.models.database import get_db
 
 router = APIRouter()
 
@@ -93,3 +95,30 @@ async def api_undo(req: UndoRequest):
         status_map = {"NOT_FOUND": 404, "EXPIRED": 400}
         status = status_map.get(e.code, 400)
         raise HTTPException(status_code=status, detail={"code": e.code, "message": e.message})
+
+
+# --- 收藏夹 ---
+@router.get("/favorites")
+async def api_favorites():
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM favorites ORDER BY sort_order").fetchall()
+    conn.close()
+    return {"favorites": [dict(r) for r in rows]}
+
+@router.post("/favorites")
+async def api_add_favorite(path: str = Query(...), label: str = Query("")):
+    try:
+        resolve_safe_path(path)
+        conn = get_db()
+        conn.execute("INSERT OR IGNORE INTO favorites (path, label) VALUES (?,?)", (path, label or FSPath(path).name))
+        conn.commit(); conn.close()
+        return {"success": True}
+    except PathSecurityError as e:
+        raise HTTPException(status_code=400, detail={"code": e.code, "message": e.message})
+
+@router.delete("/favorites/{fav_id}")
+async def api_remove_favorite(fav_id: int):
+    conn = get_db()
+    conn.execute("DELETE FROM favorites WHERE id=?", (fav_id,))
+    conn.commit(); conn.close()
+    return {"success": True}
