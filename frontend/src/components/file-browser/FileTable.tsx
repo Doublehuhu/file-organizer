@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { Table, Checkbox } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { FileOutlined, FolderOutlined } from '@ant-design/icons'
@@ -15,6 +16,22 @@ export default function FileTable({ files }: Props) {
   const setActiveFile = useBrowserStore((s) => s.setActiveFile)
   const setShowPreview = useBrowserStore((s) => s.setShowPreview)
   const activeFile = useBrowserStore((s) => s.activeFile)
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleClick = (record: FileInfo) => (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.ant-checkbox-wrapper')) return
+    // 延迟单击动作，等待可能的双击
+    if (clickTimer.current) clearTimeout(clickTimer.current)
+    clickTimer.current = setTimeout(() => {
+      setActiveFile(record)
+    }, 250)
+  }
+
+  const handleDoubleClick = (record: FileInfo) => () => {
+    if (clickTimer.current) clearTimeout(clickTimer.current)
+    if (record.is_dir) setCurrentPath(record.path)
+    else setShowPreview(true, record.path)
+  }
 
   const columns: ColumnsType<FileInfo> = [
     { title: '', dataIndex: 'path', width: 40, render: (path: string) => <Checkbox checked={selectedPaths.includes(path)} onChange={() => toggleSelect(path)} /> },
@@ -27,14 +44,8 @@ export default function FileTable({ files }: Props) {
   return (
     <Table dataSource={files} columns={columns} rowKey="path" size="small" pagination={false}
       onRow={(record) => ({
-        onClick: (e) => {
-          if ((e.target as HTMLElement).closest('.ant-checkbox-wrapper')) return
-          setActiveFile(record)
-        },
-        onDoubleClick: () => {
-          if (record.is_dir) setCurrentPath(record.path)
-          else setShowPreview(true, record.path)
-        },
+        onClick: handleClick(record),
+        onDoubleClick: handleDoubleClick(record),
         style: { cursor: 'pointer', background: activeFile?.path === record.path ? '#e6f4ff' : undefined },
       })}
       components={{ body: { row: (props: any) => { const file = files.find(f => f.path === props['data-row-key']); return <ContextMenu file={file!}><tr {...props} /></ContextMenu> } } }}
