@@ -29,10 +29,12 @@ export default function FileTable({ files }: Props) {
       onRow={(record) => ({
         onClick: (e) => {
           if ((e.target as HTMLElement).closest('.ant-checkbox-wrapper')) return
-          if (record.is_dir) setCurrentPath(record.path)
-          else setActiveFile(record)
+          setActiveFile(record)
         },
-        onDoubleClick: () => { if (!record.is_dir) setShowPreview(true, record.path) },
+        onDoubleClick: () => {
+          if (record.is_dir) setCurrentPath(record.path)
+          else setShowPreview(true, record.path)
+        },
         style: { cursor: 'pointer', background: activeFile?.path === record.path ? '#e6f4ff' : undefined },
       })}
       components={{ body: { row: (props: any) => { const file = files.find(f => f.path === props['data-row-key']); return <ContextMenu file={file!}><tr {...props} /></ContextMenu> } } }}

@@ -21,6 +21,8 @@ interface BrowserState {
   setSortOrder: (order: SortOrder) => void
   toggleSortOrder: () => void
   setShowPreview: (show: boolean, path?: string) => void
+  refreshKey: number
+  triggerRefresh: () => void
   toggleSecondPanel: () => void
   setSecondPanelPath: (path: string) => void
   clearSelection: () => void
@@ -37,6 +39,7 @@ export const useBrowserStore = create<BrowserState>((set) => ({
   previewPath: '',
   showSecondPanel: false,
   secondPanelPath: '',
+  refreshKey: 0,
   setCurrentPath: (path) => set({ currentPath: path, selectedPaths: [], activeFile: null }),
   setSelectedPaths: (paths) => set({ selectedPaths: paths }),
   toggleSelectPath: (path) =>
@@ -51,6 +54,7 @@ export const useBrowserStore = create<BrowserState>((set) => ({
   setSortOrder: (order) => set({ sortOrder: order }),
   toggleSortOrder: () => set((s) => ({ sortOrder: s.sortOrder === 'asc' ? 'desc' : 'asc' })),
   setShowPreview: (show, path) => set({ showPreview: show, previewPath: path || '' }),
+  triggerRefresh: () => set((s) => ({ refreshKey: s.refreshKey + 1 })),
   toggleSecondPanel: () => set((s) => ({ showSecondPanel: !s.showSecondPanel, secondPanelPath: s.secondPanelPath || s.currentPath })),
   setSecondPanelPath: (path) => set({ secondPanelPath: path }),
   clearSelection: () => set({ selectedPaths: [], activeFile: null }),
