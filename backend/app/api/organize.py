@@ -1,10 +1,13 @@
 """自动整理API"""
+import subprocess
+from pathlib import Path
 from fastapi import APIRouter, HTTPException, Query
 from app.services.organize_service import (
     get_categories, create_category, delete_category, add_rule,
     preview_sort, apply_sort, auto_categorize,
 )
 from app.models.schemas import CategoryRequest, CategoryRuleRequest, SortPreviewRequest, ApplySortRequest
+from app.config import settings
 
 router = APIRouter()
 
@@ -55,3 +58,25 @@ async def api_auto_categorize(req: SortPreviewRequest):
         return auto_categorize(req.source_dir)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/run-skill")
+async def api_run_skill(source_dir: str = Query(...), dry_run: bool = Query(False)):
+    """运行整理skill脚本 - 按子文件夹名称归类文件"""
+    skill_path = Path(settings.BASE_DIR).parent / "claude-skill" / "organize_skill.py"
+    if not skill_path.exists():
+        raise HTTPException(status_code=500, detail="Skill脚本未找到")
+
+    try:
+        cmd = ["python3", str(skill_path), source_dir]
+        if dry_run: cmd.append("--dry-run")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        return {
+            "success": result.returncode == 0,
+            "output": result.stdout,
+            "error": result.stderr,
+        }
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=500, detail="整理超时")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
