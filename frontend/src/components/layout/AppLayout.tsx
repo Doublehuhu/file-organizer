@@ -1,7 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Button } from 'antd'
-import { ColumnWidthOutlined } from '@ant-design/icons'
 import { useBrowserStore } from '../../stores/browserStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import Sidebar from './Sidebar'
@@ -21,11 +19,10 @@ function FilePanel({ panelPath, isSecond }: { panelPath: string; isSecond?: bool
   const activeFile = useBrowserStore((s) => s.activeFile)
   const setCurrentPath = useBrowserStore((s) => s.setCurrentPath)
   const setSecondPanelPath = useBrowserStore((s) => s.setSecondPanelPath)
-
   const { data, isLoading, error } = useFileList(panelPath, 1, 100, sortField, sortOrder)
 
   return (
-    <div className="app-main" style={{ flex: 1, minWidth: 0 }}>
+    <div className="app-main" style={{ flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <Header panelPath={panelPath} onNavigate={isSecond ? setSecondPanelPath : setCurrentPath} />
       {selectedPaths.length > 1 && <BatchActionsBar />}
       <div className="app-content">
@@ -48,45 +45,40 @@ export default function AppLayout() {
   const previewPath = useBrowserStore((s) => s.previewPath)
   const setShowPreview = useBrowserStore((s) => s.setShowPreview)
   const showSecondPanel = useBrowserStore((s) => s.showSecondPanel)
-  const toggleSecondPanel = useBrowserStore((s) => s.toggleSecondPanel)
   const secondPanelPath = useBrowserStore((s) => s.secondPanelPath)
   const panelWidths = useSettingsStore((s) => s.panelWidths)
   const setPanelWidths = useSettingsStore((s) => s.setPanelWidths)
 
   const containerRef = useRef<HTMLDivElement>(null)
-  const dragging = useRef<'sidebar' | 'panel2' | 'preview' | null>(null)
+  const dragging = useRef<'sidebar' | 'center' | 'preview' | null>(null)
 
   useEffect(() => {
-    const pathParam = searchParams.get('path')
-    if (pathParam && pathParam !== currentPath) setCurrentPath(pathParam)
+    const pp = searchParams.get('path')
+    if (pp && pp !== currentPath) setCurrentPath(pp)
   }, [])
 
   useEffect(() => {
     if (currentPath) setSearchParams({ path: currentPath })
   }, [currentPath])
 
-  const handleMouseDown = useCallback((panel: 'sidebar' | 'panel2' | 'preview') => (e: React.MouseEvent) => {
-    e.preventDefault()
-    dragging.current = panel
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
+  const onMouseDown = useCallback((panel: 'sidebar' | 'center' | 'preview') => (e: React.MouseEvent) => {
+    e.preventDefault(); dragging.current = panel
+    document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'
   }, [])
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const mm = (e: MouseEvent) => {
       if (!dragging.current || !containerRef.current) return
-      const rect = containerRef.current.getBoundingClientRect()
-      const tw = rect.width
-      const x = e.clientX - rect.left
+      const r = containerRef.current.getBoundingClientRect()
+      const x = e.clientX - r.left
       if (dragging.current === 'sidebar') {
         const w = Math.max(160, Math.min(400, x))
-        setPanelWidths({ ...panelWidths, sidebar: w, main: Math.max(200, panelWidths.main - (w - panelWidths.sidebar)) })
+        setPanelWidths({ ...panelWidths, sidebar: w })
       }
     }
-    const handleMouseUp = () => { dragging.current = null; document.body.style.cursor = ''; document.body.style.userSelect = '' }
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-    return () => { document.removeEventListener('mousemove', handleMouseMove); document.removeEventListener('mouseup', handleMouseUp) }
+    const mu = () => { dragging.current = null; document.body.style.cursor = ''; document.body.style.userSelect = '' }
+    document.addEventListener('mousemove', mm); document.addEventListener('mouseup', mu)
+    return () => { document.removeEventListener('mousemove', mm); document.removeEventListener('mouseup', mu) }
   }, [panelWidths, setPanelWidths])
 
   return (
@@ -95,29 +87,21 @@ export default function AppLayout() {
         <div className="app-sidebar" style={{ width: panelWidths.sidebar, minWidth: panelWidths.sidebar, flex: 'none' }}>
           <Sidebar />
         </div>
-        <div className="resize-handle" onMouseDown={handleMouseDown('sidebar')} />
+        <div className="resize-handle" onMouseDown={onMouseDown('sidebar')} />
 
-        <div style={{ display: 'flex', flex: showSecondPanel ? 'none' : 1, minWidth: 0, width: showSecondPanel ? '50%' : undefined, flexDirection: 'column' }}>
-          <FilePanel panelPath={currentPath || searchParams.get('path') || ''} />
-        </div>
-
-        {showSecondPanel && (
+        {showSecondPanel ? (
           <>
-            <div className="resize-handle" onMouseDown={handleMouseDown('panel2')} />
-            <div style={{ display: 'flex', flex: 1, minWidth: 0, flexDirection: 'column' }}>
-              <FilePanel panelPath={secondPanelPath || currentPath} isSecond />
-            </div>
-            <Button type="text" icon={<ColumnWidthOutlined />} onClick={toggleSecondPanel} title="关闭第二面板" style={{ alignSelf: 'center' }} />
+            <FilePanel panelPath={currentPath} />
+            <div className="resize-handle" onMouseDown={onMouseDown('center')} />
+            <FilePanel panelPath={secondPanelPath || currentPath} isSecond />
           </>
-        )}
-
-        {!showSecondPanel && (
-          <Button type="text" icon={<ColumnWidthOutlined />} onClick={toggleSecondPanel} title="打开第二面板" style={{ alignSelf: 'center', margin: '0 2px' }} />
+        ) : (
+          <FilePanel panelPath={currentPath} />
         )}
 
         {showPreview && (
           <>
-            <div className="resize-handle" onMouseDown={handleMouseDown('preview')} />
+            <div className="resize-handle" onMouseDown={onMouseDown('preview')} />
             <div className="preview-panel" style={{ width: panelWidths.preview || 420, flex: 'none' }}>
               <PreviewPanel path={previewPath} onClose={() => setShowPreview(false)} />
             </div>

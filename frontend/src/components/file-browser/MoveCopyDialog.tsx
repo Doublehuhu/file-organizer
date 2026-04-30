@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Modal, Tree, Button, Typography, Space, Input, message } from 'antd'
-import { FolderOutlined, HomeOutlined, DesktopOutlined } from '@ant-design/icons'
-import type { DataNode } from 'antd/es/tree'
+import { Modal, Button, List, Typography, Breadcrumb, message, Space } from 'antd'
+import { FolderOutlined, DesktopOutlined, HomeOutlined } from '@ant-design/icons'
 import api from '../../api/client'
 import { useBrowserStore } from '../../stores/browserStore'
 import { useOperationStore } from '../../stores/operationStore'
@@ -9,134 +8,77 @@ import { useOperationStore } from '../../stores/operationStore'
 const { Text } = Typography
 
 interface Props {
-  open: boolean
-  type: 'move' | 'copy'
-  sourcePaths: string[]
-  onClose: () => void
-  onDone: () => void
+  open: boolean; type: 'move' | 'copy'; sourcePaths: string[]
+  onClose: () => void; onDone: () => void
 }
 
-const QUICK_DIRS = [
-  { title: '桌面', key: '/Users/yizheng/Desktop', icon: <DesktopOutlined /> },
-  { title: '文稿', key: '/Users/yizheng/Documents', icon: <FolderOutlined /> },
-  { title: '下载', key: '/Users/yizheng/Downloads', icon: <FolderOutlined /> },
-  { title: '个人目录', key: '/Users/yizheng', icon: <HomeOutlined /> },
+const QUICK = [
+  { label: '桌面', path: '/Users/yizheng/Desktop', icon: <DesktopOutlined /> },
+  { label: '文稿', path: '/Users/yizheng/Documents', icon: <FolderOutlined /> },
+  { label: '下载', path: '/Users/yizheng/Downloads', icon: <FolderOutlined /> },
+  { label: '个人', path: '/Users/yizheng', icon: <HomeOutlined /> },
 ]
 
 export default function MoveCopyDialog({ open, type, sourcePaths, onClose, onDone }: Props) {
-  const [treeData, setTreeData] = useState<DataNode[]>([])
-  const [selectedDir, setSelectedDir] = useState<string>('')
+  const [dir, setDir] = useState('')
+  const [folders, setFolders] = useState<{ name: string; path: string }[]>([])
   const [loading, setLoading] = useState(false)
-  const currentPath = useBrowserStore((s) => s.currentPath)
-  const setOperation = useOperationStore((s) => s.setOperation)
-  const setCurrentPath = useBrowserStore((s) => s.setCurrentPath)
+  const [saving, setSaving] = useState(false)
+  const setOp = useOperationStore((s) => s.setOperation)
 
   useEffect(() => {
-    if (open) {
-      setSelectedDir(currentPath)
-      loadChildren('/Users/yizheng')
-    }
+    if (open) setDir(useBrowserStore.getState().currentPath || '/Users/yizheng')
   }, [open])
 
-  const loadChildren = async (parentPath: string): Promise<DataNode[]> => {
-    try {
-      const { data } = await api.get('/api/files/list', {
-        params: { path: parentPath, page: 1, page_size: 200, sort: 'name', order: 'asc' },
-      })
-      return data.files
-        .filter((f: any) => f.is_dir && !f.name.startsWith('.'))
-        .map((f: any) => ({
-          title: f.name,
-          key: f.path,
-          icon: <FolderOutlined />,
-          isLeaf: false,
-        }))
-    } catch {
-      return []
-    }
-  }
+  useEffect(() => { if (dir) load(dir) }, [dir])
 
-  const onLoadData = async (node: any): Promise<void> => {
-    if (node.children) return
-    const children = await loadChildren(node.key)
-    setTreeData((prev) => updateTreeData(prev, node.key, children))
-  }
-
-  const updateTreeData = (list: DataNode[], key: string, children: DataNode[]): DataNode[] =>
-    list.map((node) => {
-      if (node.key === key) return { ...node, children }
-      if (node.children) return { ...node, children: updateTreeData(node.children as DataNode[], key, children) }
-      return node
-    })
-
-  const handleSelect = (keys: React.Key[]) => {
-    if (keys.length > 0) setSelectedDir(keys[0] as string)
-  }
-
-  const handleOk = async () => {
-    if (!selectedDir) {
-      message.warning('请选择目标文件夹')
-      return
-    }
+  const load = async (d: string) => {
     setLoading(true)
     try {
-      const endpoint = type === 'move' ? '/api/files/move' : '/api/files/copy'
-      const actionName = type === 'move' ? '移动' : '复制'
-      const { data } = await api.post(endpoint, { source_paths: sourcePaths, destination_dir: selectedDir })
-      const successCount = data.results.filter((r: any) => r.success).length
-      setOperation({
-        operation_id: data.operation_id,
-        message: `已${actionName} ${successCount} 个文件`,
-        undo_available_until: data.undo_available_until,
-      })
-      message.success(`${actionName}成功: ${successCount} 个文件`)
-      onDone()
-    } catch (e: any) {
-      message.error(`操作失败: ${e.message}`)
-    } finally {
-      setLoading(false)
-    }
+      const { data } = await api.get('/api/files/list', { params: { path: d, page: 1, page_size: 200, sort: 'name', order: 'asc' } })
+      setFolders(data.files.filter((f: any) => f.is_dir && !f.name.startsWith('.')).map((f: any) => ({ name: f.name, path: f.path })))
+    } catch { setFolders([]) }
+    setLoading(false)
   }
 
-  const initTreeData: DataNode[] = [
-    {
-      title: '快捷位置',
-      key: '__quick__',
-      selectable: false,
-      children: QUICK_DIRS.map((d) => ({
-        ...d,
-        isLeaf: false,
-      })),
-    },
-    {
-      title: '浏览目录',
-      key: '/Users/yizheng',
-      icon: <HomeOutlined />,
-      children: [],
-    },
+  const parts = dir.split('/').filter(Boolean)
+  const bc = [
+    { title: <HomeOutlined onClick={() => setDir('/Users/yizheng')} style={{ cursor: 'pointer' }} /> },
+    ...parts.map((p: string, i: number) => ({
+      title: <span style={{ cursor: 'pointer' }} onClick={() => setDir('/' + parts.slice(0, i + 1).join('/'))}>{p}</span>,
+    })),
   ]
 
+  const handleOk = async () => {
+    if (!dir) return message.warning('请选择目标文件夹')
+    setSaving(true)
+    try {
+      const ep = type === 'move' ? '/api/files/move' : '/api/files/copy'
+      const act = type === 'move' ? '移动' : '复制'
+      const { data } = await api.post(ep, { source_paths: sourcePaths, destination_dir: dir })
+      const ok = data.results.filter((r: any) => r.success).length
+      setOp({ operation_id: data.operation_id, message: `已${act} ${ok} 个文件`, undo_available_until: data.undo_available_until })
+      message.success(`${act}成功: ${ok} 个文件`)
+      onDone()
+    } catch (e: any) { message.error(`失败: ${e.message}`) }
+    setSaving(false)
+  }
+
   return (
-    <Modal
-      title={`${type === 'move' ? '移动' : '复制'} ${sourcePaths.length} 个文件`}
-      open={open}
-      onOk={handleOk}
-      onCancel={onClose}
-      confirmLoading={loading}
-      okText={type === 'move' ? '移动' : '复制'}
-      width={500}
-    >
-      <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-        目标文件夹: <Text code>{selectedDir || '未选择'}</Text>
-      </Text>
-      <div style={{ maxHeight: 360, overflow: 'auto', border: '1px solid #f0f0f0', borderRadius: 6, padding: 8 }}>
-        <Tree.DirectoryTree
-          defaultExpandedKeys={['/Users/yizheng']}
-          onSelect={handleSelect}
-          loadData={onLoadData as any}
-          treeData={treeData.length > 0 ? treeData : initTreeData}
-        />
-      </div>
+    <Modal title={`${type === 'move' ? '移动' : '复制'} ${sourcePaths.length} 个文件`} open={open} onOk={handleOk} onCancel={onClose} confirmLoading={saving} okText={type === 'move' ? '移动' : '复制'} width={560}>
+      <Space wrap style={{ marginBottom: 8 }}>
+        {QUICK.map((q) => <Button key={q.path} size="small" icon={q.icon} type={dir === q.path ? 'primary' : 'default'} onClick={() => setDir(q.path)}>{q.label}</Button>)}
+      </Space>
+      <Breadcrumb items={bc} style={{ marginBottom: 8 }} />
+      <Text type="secondary">目标: <Text code>{dir}</Text></Text>
+      <List loading={loading} size="small" style={{ marginTop: 8, maxHeight: 320, overflow: 'auto', border: '1px solid #f0f0f0', borderRadius: 6 }} bordered
+        dataSource={folders} locale={{ emptyText: '无子文件夹' }}
+        renderItem={(f) => (
+          <List.Item onClick={() => setDir(f.path)} style={{ cursor: 'pointer', background: f.path === dir ? '#e6f4ff' : undefined }}>
+            <FolderOutlined style={{ color: '#faad14', marginRight: 8 }} />{f.name}
+          </List.Item>
+        )}
+      />
     </Modal>
   )
 }
