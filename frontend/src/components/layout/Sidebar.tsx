@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Button, Typography, message, Popconfirm } from 'antd'
-import { HomeOutlined, DesktopOutlined, FolderOutlined, FolderAddOutlined, StarOutlined, DeleteOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons'
+import { HomeOutlined, DesktopOutlined, FolderOutlined, FolderAddOutlined, StarOutlined, DeleteOutlined, PlusOutlined, SettingOutlined, ApartmentOutlined } from '@ant-design/icons'
 import { useBrowserStore } from '../../stores/browserStore'
 import SettingsDialog from '../common/SettingsDialog'
+import AutoOrganizeDialog from '../organize/AutoOrganizeDialog'
 import api from '../../api/client'
 
 const { Text } = Typography
@@ -22,6 +23,7 @@ export default function Sidebar() {
   const triggerRefresh = useBrowserStore((s) => s.triggerRefresh)
   const [favorites, setFavorites] = useState<FavItem[]>([])
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [organizeOpen, setOrganizeOpen] = useState(false)
 
   const loadFavs = async () => {
     try {
@@ -85,6 +87,7 @@ export default function Sidebar() {
       </div>
 
       <div style={{ marginBottom: 8 }}>
+        <Button icon={<ApartmentOutlined />} block onClick={() => setOrganizeOpen(true)} size="small">自动整理</Button>
         <Button icon={<SettingOutlined />} block onClick={() => setSettingsOpen(true)} size="small">设置</Button>
       </div>
 
@@ -93,6 +96,7 @@ export default function Sidebar() {
         <div style={{ marginTop: 4, fontSize: 12, wordBreak: 'break-all', color: '#1677ff' }}>{currentPath || '未选择'}</div>
       </div>
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <AutoOrganizeDialog open={organizeOpen} onClose={() => setOrganizeOpen(false)} />
     </div>
   )
 }
