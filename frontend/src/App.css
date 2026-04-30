@@ -2,12 +2,14 @@
 html, body, #root { height: 100%; }
 .app-layout { height: 100vh; display: flex; flex-direction: column; }
 .app-body { display: flex; flex: 1; overflow: hidden; }
-.app-sidebar { width: 260px; min-width: 260px; border-right: 1px solid #f0f0f0; overflow-y: auto; padding: 12px; }
-.app-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.app-sidebar { border-right: 1px solid #f0f0f0; overflow-y: auto; padding: 12px; }
+.app-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 .app-header { padding: 8px 16px; border-bottom: 1px solid #f0f0f0; background: #fff; }
 .app-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .app-content { flex: 1; overflow: auto; padding: 8px; }
-.preview-panel { width: 420px; min-width: 420px; border-left: 1px solid #f0f0f0; overflow-y: auto; padding: 16px; background: #fafafa; }
+.resize-handle { width: 6px; cursor: col-resize; background: transparent; transition: background 0.2s; flex: none; z-index: 10; }
+.resize-handle:hover { background: #1677ff; }
+.preview-panel { border-left: 1px solid #f0f0f0; overflow-y: auto; padding: 16px; background: #fafafa; }
 .batch-bar { padding: 8px 16px; background: #e6f4ff; border-bottom: 1px solid #91caff; display: flex; align-items: center; gap: 8px; }
 .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; padding: 8px; }
 .file-grid-item { display: flex; flex-direction: column; align-items: center; padding: 12px 8px; border-radius: 8px; cursor: pointer; transition: background 0.2s; text-align: center; }
