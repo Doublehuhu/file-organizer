@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Button, Input, Space, Typography, Modal, message } from 'antd'
-import { SwapOutlined, CopyOutlined, DeleteOutlined, EyeOutlined, EnterOutlined } from '@ant-design/icons'
+import { SwapOutlined, CopyOutlined, DeleteOutlined, EyeOutlined, EnterOutlined, RobotOutlined } from '@ant-design/icons'
 import { useBrowserStore } from '../../stores/browserStore'
 import { useOperationStore } from '../../stores/operationStore'
 import MoveCopyDialog from './MoveCopyDialog'
+import AIRenameDialog from '../ai-rename/AIRenameDialog'
 import type { FileInfo } from '../../types/file'
 import api from '../../api/client'
 
@@ -28,6 +29,7 @@ export default function FileActionBar({ file }: Props) {
   const [loading, setLoading] = useState(false)
   const [moveCopyOpen, setMoveCopyOpen] = useState(false)
   const [moveCopyType, setMoveCopyType] = useState<'move' | 'copy'>('move')
+  const [aiRenameOpen, setAIRenameOpen] = useState(false)
 
   useEffect(() => { const [s] = splitExt(file.name); setNewStem(s) }, [file])
 
@@ -39,20 +41,17 @@ export default function FileActionBar({ file }: Props) {
     try {
       await api.post('/api/files/rename', { path: file.path, new_name: newFullName })
       message.success(`已重命名: ${newFullName}`)
-      triggerRefresh()
-      setActiveFile(null)
+      triggerRefresh(); setActiveFile(null)
     } catch (e: any) { message.error(`失败: ${e.message}`) }
     setLoading(false)
   }
 
   const doDelete = useCallback(() => {
-    Modal.confirm({
-      title: '确认删除', content: `删除 "${file.name}"？可撤销。`, okText: '删除', okType: 'danger', cancelText: '取消',
+    Modal.confirm({ title: '确认删除', content: `删除 "${file.name}"？可撤销。`, okText: '删除', okType: 'danger', cancelText: '取消',
       onOk: async () => {
         const { data } = await api.post('/api/files/delete', { paths: [file.path], permanent: false })
         setOperation({ operation_id: data.operation_id, message: `已删除 ${file.name}`, undo_available_until: data.undo_available_until })
-        triggerRefresh()
-        setActiveFile(null)
+        triggerRefresh(); setActiveFile(null)
       },
     })
   }, [file, setActiveFile, setOperation, triggerRefresh])
@@ -62,8 +61,6 @@ export default function FileActionBar({ file }: Props) {
   const doPreview = useCallback(() => setShowPreview(true, file.path), [file.path, setShowPreview])
   const doEnter = useCallback(() => setCurrentPath(file.path), [file.path, setCurrentPath])
   const focusRename = useCallback(() => { document.getElementById('rename-input')?.focus() }, [])
-
-  const onMoveCopyDone = () => { setMoveCopyOpen(false); triggerRefresh(); setActiveFile(null) }
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -86,15 +83,14 @@ export default function FileActionBar({ file }: Props) {
         <Text strong style={{ fontSize: 14, minWidth: 120, maxWidth: 260 }} ellipsis={{ tooltip: file.name }}>{file.name}</Text>
         <Space size={8} wrap>
           {file.is_dir ? (
-            <Input id="rename-input" value={newStem} onChange={(e) => setNewStem(e.target.value)} onPressEnter={handleRename} placeholder="输入新名称..." style={{ width: 280, fontSize: 14 }} />
+            <Input id="rename-input" value={newStem} onChange={(e) => setNewStem(e.target.value)} onPressEnter={handleRename} placeholder="新名称..." style={{ width: 280, fontSize: 14 }} />
           ) : (
-            <Input id="rename-input" value={newStem} onChange={(e) => setNewStem(e.target.value)} onPressEnter={handleRename} placeholder="输入新名称..." style={{ width: 280, fontSize: 14 }}
+            <Input id="rename-input" value={newStem} onChange={(e) => setNewStem(e.target.value)} onPressEnter={handleRename} placeholder="新名称..." style={{ width: 280, fontSize: 14 }}
               addonAfter={<Text type="secondary" style={{ fontSize: 12 }}>{ext}</Text>} />
           )}
-          {newFullName !== file.name && (
-            <Button type="primary" onClick={handleRename} loading={loading}>确认重命名 ⌘R</Button>
-          )}
-          {file.is_dir && <Button icon={<EnterOutlined />} onClick={doEnter} type="primary">进入文件夹</Button>}
+          {newFullName !== file.name && <Button type="primary" onClick={handleRename} loading={loading}>确认 ⌘R</Button>}
+          {file.is_dir && <Button icon={<EnterOutlined />} onClick={doEnter} type="primary">进入</Button>}
+          {!file.is_dir && <Button icon={<RobotOutlined />} onClick={() => setAIRenameOpen(true)}>AI 重命名</Button>}
           <Button icon={<SwapOutlined />} onClick={doMove}>移动 ⌘M</Button>
           <Button icon={<CopyOutlined />} onClick={doCopy}>复制 ⌘C</Button>
           {!file.is_dir && <Button icon={<EyeOutlined />} onClick={doPreview}>预览 ⌘P</Button>}
@@ -102,7 +98,8 @@ export default function FileActionBar({ file }: Props) {
           <Text type="secondary" style={{ fontSize: 11 }}>Esc 取消</Text>
         </Space>
       </div>
-      <MoveCopyDialog open={moveCopyOpen} type={moveCopyType} sourcePaths={[file.path]} onClose={() => setMoveCopyOpen(false)} onDone={onMoveCopyDone} />
+      <MoveCopyDialog open={moveCopyOpen} type={moveCopyType} sourcePaths={[file.path]} onClose={() => setMoveCopyOpen(false)} onDone={() => { setMoveCopyOpen(false); triggerRefresh(); setActiveFile(null) }} />
+      <AIRenameDialog open={aiRenameOpen} filePaths={[file.path]} onClose={() => setAIRenameOpen(false)} />
     </>
   )
 }

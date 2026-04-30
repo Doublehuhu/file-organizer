@@ -5,6 +5,7 @@ import { EyeOutlined, EditOutlined, SwapOutlined, CopyOutlined, DeleteOutlined, 
 import { useBrowserStore } from '../../stores/browserStore'
 import { useOperationStore } from '../../stores/operationStore'
 import MoveCopyDialog from './MoveCopyDialog'
+import AIRenameDialog from '../ai-rename/AIRenameDialog'
 import type { FileInfo } from '../../types/file'
 import api from '../../api/client'
 
@@ -20,6 +21,7 @@ export default function ContextMenu({ file, children }: Props) {
   const [moveCopyType, setMoveCopyType] = useState<'move' | 'copy'>('move')
   const [renameOpen, setRenameOpen] = useState(false)
   const [newName, setNewName] = useState('')
+  const [aiRenameOpen, setAIRenameOpen] = useState(false)
 
   if (!file) return <>{children}</>
 
@@ -51,7 +53,7 @@ export default function ContextMenu({ file, children }: Props) {
     { key: 'preview', icon: <EyeOutlined />, label: '预览', onClick: () => setShowPreview(true, file.path) },
     { type: 'divider' },
     { key: 'rename', icon: <EditOutlined />, label: '重命名', onClick: () => { setNewName(file.name); setRenameOpen(true) } },
-    { key: 'ai-rename', icon: <RobotOutlined />, label: 'AI 重命名' },
+    { key: 'ai-rename', icon: <RobotOutlined />, label: 'AI 重命名', onClick: () => setAIRenameOpen(true) },
     { type: 'divider' },
     { key: 'move', icon: <SwapOutlined />, label: '移动到...', onClick: () => { setMoveCopyType('move'); setMoveCopyOpen(true) } },
     { key: 'copy', icon: <CopyOutlined />, label: '复制到...', onClick: () => { setMoveCopyType('copy'); setMoveCopyOpen(true) } },
@@ -71,6 +73,7 @@ export default function ContextMenu({ file, children }: Props) {
       <Modal title="重命名" open={renameOpen} onOk={handleRename} onCancel={() => setRenameOpen(false)} okText="确定" cancelText="取消">
         <Input value={newName} onChange={(e) => setNewName(e.target.value)} onPressEnter={handleRename} autoFocus />
       </Modal>
+      <AIRenameDialog open={aiRenameOpen} filePaths={[file.path]} onClose={() => setAIRenameOpen(false)} />
     </>
   )
 }
