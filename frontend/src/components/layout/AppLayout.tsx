@@ -61,7 +61,11 @@ export default function AppLayout() {
   const containerRef = useRef<HTMLDivElement>(null)
   const dragging = useRef<'center' | 'preview' | null>(null)
 
-  useEffect(() => { const pp = searchParams.get('path'); if (pp && pp !== currentPath) setCurrentPath(pp) }, [])
+  useEffect(() => {
+    const pp = searchParams.get('path')
+    if (pp) setCurrentPath(pp)
+    else setCurrentPath('/Users/yizheng/Desktop')
+  }, [])
   useEffect(() => { if (currentPath) setSearchParams({ path: currentPath }) }, [currentPath])
 
   const onMouseDown = useCallback((panel: 'center' | 'preview') => (e: React.MouseEvent) => {
