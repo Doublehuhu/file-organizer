@@ -1,6 +1,7 @@
 """自动整理API"""
 import subprocess
 from pathlib import Path
+from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException, Query
 from app.services.organize_service import (
     get_categories, create_category, delete_category, add_rule,
@@ -60,16 +61,20 @@ async def api_auto_categorize(req: SortPreviewRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+class SkillRunRequest(BaseModel):
+    source_dir: str
+    dry_run: bool = False
+
 @router.post("/run-skill")
-async def api_run_skill(source_dir: str = Query(...), dry_run: bool = Query(False)):
+async def api_run_skill(req: SkillRunRequest):
     """运行整理skill脚本 - 按子文件夹名称归类文件"""
     skill_path = Path(settings.BASE_DIR).parent / "claude-skill" / "organize_skill.py"
     if not skill_path.exists():
         raise HTTPException(status_code=500, detail="Skill脚本未找到")
 
     try:
-        cmd = ["python3", str(skill_path), source_dir]
-        if dry_run: cmd.append("--dry-run")
+        cmd = ["python3", str(skill_path), req.source_dir]
+        if req.dry_run: cmd.append("--dry-run")
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         return {
             "success": result.returncode == 0,
